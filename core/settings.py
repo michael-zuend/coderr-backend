@@ -30,7 +30,9 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-env")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = os.environ.get(
+    "ALLOWED_HOSTS", "127.0.0.1,localhost"
+).split(",")
 
 
 # Application definition
@@ -98,19 +100,13 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
 
+PASSWORD_VALIDATION = "django.contrib.auth.password_validation"
+
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
-    },
-    {
-        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
-    },
+    {"NAME": f"{PASSWORD_VALIDATION}.UserAttributeSimilarityValidator"},
+    {"NAME": f"{PASSWORD_VALIDATION}.MinimumLengthValidator"},
+    {"NAME": f"{PASSWORD_VALIDATION}.CommonPasswordValidator"},
+    {"NAME": f"{PASSWORD_VALIDATION}.NumericPasswordValidator"},
 ]
 
 
@@ -152,6 +148,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
