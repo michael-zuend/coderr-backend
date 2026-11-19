@@ -11,7 +11,9 @@ The frontend is not part of this repository.
 - Python 3.12+
 - Django 6.1
 - Django REST Framework (token authentication)
-- SQLite (development database)
+- PostgreSQL in Docker, SQLite for local development
+- Gunicorn and WhiteNoise in the container
+- GitHub Actions for CI and security scans
 
 ## Setup without Docker
 
@@ -96,6 +98,13 @@ The API runs at `http://127.0.0.1:8000/api/`, the admin panel at
 | `DEBUG` | `True` for development, `False` for production |
 | `ALLOWED_HOSTS` | Comma-separated list of allowed hosts |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated list of frontend origins |
+| `POSTGRES_DB` | Name of the PostgreSQL database (Docker) |
+| `POSTGRES_USER` | PostgreSQL user (Docker) |
+| `POSTGRES_PASSWORD` | PostgreSQL password (Docker), use a strong password |
+| `CREATE_GUEST_USERS` | `True` creates the guest accounts on container start |
+
+`SECRET_KEY` is required, the app does not start without it. `DEBUG` is
+`False` unless it is set to `True`.
 
 By default the frontend is expected at `http://127.0.0.1:5500`
 (VS Code Live Server).
@@ -134,7 +143,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-On start the container runs the migrations and creates the guest users.
+This starts two containers: the backend and a PostgreSQL database. On
+start the backend runs the migrations, collects the static files, creates
+the guest users if `CREATE_GUEST_USERS=True` and starts Gunicorn.
 The API is available at `http://127.0.0.1:8000/api/`.
 
 3. Stop the container with `Ctrl + C` and remove it with:
@@ -143,8 +154,13 @@ The API is available at `http://127.0.0.1:8000/api/`.
 docker compose down
 ```
 
-The project folder is mounted into the container, so code changes are
-picked up without rebuilding the image.
+After code changes, rebuild the image with `docker compose up --build`.
+The database and uploaded files are stored in Docker volumes and survive
+restarts. To delete them as well:
+
+```bash
+docker compose down -v
+```
 
 ## Project structure
 
@@ -254,31 +270,51 @@ reviews, average rating, number of business profiles and number of offers.
 
 ## Docker
 
-The backend runs in a Docker container for a consistent setup on every
-machine.
-
 ### Dockerfile
 
 - Uses the slim Python 3.13 image as a base
 - Installs the requirements in a separate layer, so they are only
   reinstalled when `requirements.txt` changes
-- Runs the app as a non-root user (`appuser`) for better security
-- On start it runs the migrations, creates the guest users and starts the
-  development server on port 8000
+- Runs the app as a non-root user (`appuser`)
+- Serves the API with Gunicorn instead of the Django development server
+- Serves static files with WhiteNoise
 
 ### docker-compose.yml
 
-- Builds the image from the `Dockerfile`
-- Maps port `8000` of the container to port `8000` on the host
-- Loads the environment variables from `.env`
-- Mounts the project folder into the container, so code changes are
-  picked up without rebuilding
+- `db`: PostgreSQL 17 with a health check and a volume for the data
+- `backend`: built from the `Dockerfile`, starts only when the database is
+  healthy, maps port `8000` and stores uploads in a volume
+- Both services read their configuration from `.env`
 
 The `.dockerignore` keeps the virtual environment, the database, `.env`
 and cache files out of the image.
 
-The container uses the Django development server. For a production
-deployment a server like gunicorn would be used instead.
+## Security
+
+- No secrets in the code: `SECRET_KEY` and the database password come from
+  `.env`, which is not in the repository
+- Secure defaults: `DEBUG` is off by default and the app refuses to start
+  without a `SECRET_KEY`
+- Login and registration are limited to 5 requests per minute per client
+  to slow down brute-force attacks (HTTP 429 when exceeded)
+- Every endpoint requires authentication unless it is marked as public
+- Object permissions make sure users can only change their own data
+- The container runs as a non-root user
+- Guest accounts are only created when `CREATE_GUEST_USERS=True`
+
+## CI pipeline
+
+GitHub Actions runs on every push and pull request
+(`.github/workflows/ci.yml`):
+
+| Job | What it does |
+|---|---|
+| Lint and tests | flake8, all tests on PostgreSQL, coverage of at least 95 % |
+| Security scans | Bandit for the code, pip-audit for known vulnerabilities in the dependencies |
+| Docker image scan | Builds the image and scans it with Trivy for critical and high vulnerabilities |
+
+The Trivy action is pinned to a commit hash instead of a version tag, because
+version tags can be changed afterwards.
 
 ## Tests
 
