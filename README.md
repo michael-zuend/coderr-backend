@@ -102,6 +102,9 @@ The API runs at `http://127.0.0.1:8000/api/`, the admin panel at
 | `POSTGRES_USER` | PostgreSQL user (Docker) |
 | `POSTGRES_PASSWORD` | PostgreSQL password (Docker), use a strong password |
 | `CREATE_GUEST_USERS` | `True` creates the guest accounts on container start |
+| `SECURE_SSL_REDIRECT` | Redirect HTTP to HTTPS when `DEBUG=False` (default `True`) |
+| `SECURE_HSTS_SECONDS` | HSTS duration when `DEBUG=False` (default one year) |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | SMTP settings, only used when `DEBUG=False` |
 
 `SECRET_KEY` is required, the app does not start without it. `DEBUG` is
 `False` unless it is set to `True`.
@@ -297,10 +300,25 @@ and cache files out of the image.
   without a `SECRET_KEY`
 - Login and registration are limited to 5 requests per minute per client
   to slow down brute-force attacks (HTTP 429 when exceeded)
+- HTTPS hardening when `DEBUG=False`: redirect to HTTPS, secure session and
+  CSRF cookies, HSTS for one year and support for a TLS-terminating reverse
+  proxy through the `X-Forwarded-Proto` header
+- Emails go to the console in development and through SMTP in production
 - Every endpoint requires authentication unless it is marked as public
 - Object permissions make sure users can only change their own data
 - The container runs as a non-root user
 - Guest accounts are only created when `CREATE_GUEST_USERS=True`
+
+### Known limitations
+
+- The throttling counter is stored in Django's default local memory cache,
+  which exists separately in every Gunicorn worker. With 3 workers a client
+  can therefore make up to 3 times more requests than the limit. A shared
+  cache such as Redis would make the limit exact.
+- With `DEBUG=False` the app redirects to HTTPS. Running it locally over
+  plain HTTP with `DEBUG=False` requires `SECURE_SSL_REDIRECT=False`.
+- With `DEBUG=False` uploaded media files are not served by Django. In
+  production a web server or object storage would serve them.
 
 ## CI pipeline
 
@@ -310,11 +328,14 @@ GitHub Actions runs on every push and pull request
 | Job | What it does |
 |---|---|
 | Lint and tests | flake8, all tests on PostgreSQL, coverage of at least 95 % |
+| Django deploy checks | `check --deploy` with production settings, fails on any warning |
 | Security scans | Bandit for the code, pip-audit for known vulnerabilities in the dependencies |
 | Docker image scan | Builds the image and scans it with Trivy for critical and high vulnerabilities |
 
-The Trivy action is pinned to a commit hash instead of a version tag, because
-version tags can be changed afterwards.
+All actions are pinned to full commit hashes instead of version tags,
+because tags can be moved to other commits afterwards. This happened in
+March 2026, when the version tags of the Trivy action were changed to
+malicious code.
 
 ## Tests
 
