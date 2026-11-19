@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
 from profile_app.api.permissions import IsCustomerUser
@@ -63,7 +63,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
             business_user=business_user, reviewer=self.request.user
         ).exists()
         if already_reviewed:
-            raise PermissionDenied(
-                "You have already reviewed this business user."
+            raise ValidationError(
+                {"detail": "You have already reviewed this business user."}
             )
         serializer.save(reviewer=self.request.user)

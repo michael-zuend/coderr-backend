@@ -37,7 +37,7 @@ class ReviewCreateListTests(ReviewTestCase):
     def test_second_review_for_same_business_fails(self):
         self.post_review()
         response = self.post_review()
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_business_user_cannot_create_review(self):
         authenticate(self.client, self.business)
