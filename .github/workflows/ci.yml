@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  SECRET_KEY: ci-only-secret-key
+  DEBUG: "False"
+
+jobs:
+  test:
+    name: Lint and tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: coderr
+          POSTGRES_USER: coderr
+          POSTGRES_PASSWORD: coderr
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U coderr"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: coderr
+      POSTGRES_USER: coderr
+      POSTGRES_PASSWORD: coderr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt flake8
+      - name: Check code style
+        run: flake8
+      - name: Run tests with coverage
+        run: coverage run manage.py test
+      - name: Check coverage
+        run: coverage report --fail-under=95
+
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install scanners
+        run: pip install bandit pip-audit
+      - name: Scan code with Bandit
+        run: bandit -r . -ll -x ./env,./*/tests,./*/migrations
+      - name: Check dependencies for known vulnerabilities
+        run: pip-audit -r requirements.txt
+
+  docker:
+    name: Docker image scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t coderr-backend:ci .
+      - name: Scan image with Trivy
+        # Pinned to the commit of v0.35.0, the release that was not affected
+        # by the trivy-action supply chain attack in March 2026.
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          version: v0.69.3
+          image-ref: coderr-backend:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
