@@ -1,6 +1,7 @@
 from io import StringIO
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.management import call_command
 from django.urls import reverse
 from rest_framework import status
@@ -13,6 +14,9 @@ class RegistrationTests(APITestCase):
     """Tests for the registration endpoint."""
 
     url = reverse("registration")
+
+    def setUp(self):
+        cache.clear()
 
     def get_payload(self, **overrides):
         payload = {
@@ -56,6 +60,7 @@ class LoginTests(APITestCase):
     url = reverse("login")
 
     def setUp(self):
+        cache.clear()
         self.user = create_user("loginuser", "business")
 
     def test_login_returns_token(self):
@@ -69,6 +74,15 @@ class LoginTests(APITestCase):
         payload = {"username": "loginuser", "password": "wrong"}
         response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_too_many_login_attempts_are_throttled(self):
+        payload = {"username": "loginuser", "password": "wrong"}
+        for _ in range(5):
+            self.client.post(self.url, payload)
+        response = self.client.post(self.url, payload)
+        self.assertEqual(
+            response.status_code, status.HTTP_429_TOO_MANY_REQUESTS
+        )
 
 
 class GuestUserCommandTests(APITestCase):

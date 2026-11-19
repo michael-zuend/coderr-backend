@@ -152,6 +152,12 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "COERCE_DECIMAL_TO_STRING": False,
+    "DEFAULT_THROTTLE_RATES": {
+        "login": os.environ.get("LOGIN_THROTTLE_RATE", "5/minute"),
+        "registration": os.environ.get(
+            "REGISTRATION_THROTTLE_RATE", "5/minute"
+        ),
+    },
 }
 
 CORS_ALLOWED_ORIGINS = os.environ.get(
