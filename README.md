@@ -276,7 +276,10 @@ reviews, average rating, number of business profiles and number of offers.
 
 ### Dockerfile
 
-- Uses the slim Python 3.13 image as a base
+- Uses the slim Python 3.13 image as a base and installs the latest
+  Debian security updates
+- Removes pip after installing the requirements, so pip and its vendored
+  libraries are not part of the runtime image
 - Installs the requirements in a separate layer, so they are only
   reinstalled when `requirements.txt` changes
 - Runs the app as a non-root user (`appuser`)
