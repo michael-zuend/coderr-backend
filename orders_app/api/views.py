@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from offers_app.models import OfferDetail
 from orders_app.models import Order
-from profile_app.api.permissions import IsBusinessUser, IsCustomerUser
+from profile_app.api.permissions import IsCustomerUser
 
 from .permissions import IsOrderBusinessUser
 from .serializers import (
@@ -69,9 +69,7 @@ class OrderUpdateView(UpdateAPIView):
 
     queryset = Order.objects.all()
     serializer_class = OrderStatusSerializer
-    permission_classes = [
-        IsAuthenticated, IsBusinessUser, IsOrderBusinessUser
-    ]
+    permission_classes = [IsAuthenticated, IsOrderBusinessUser]
     http_method_names = ["patch", "options"]
 
     def partial_update(self, request, *args, **kwargs):

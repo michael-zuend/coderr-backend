@@ -106,6 +106,13 @@ class OrderUpdateTests(OrderTestCase):
         response = self.client.patch(self.url, {"status": "completed"})
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_unknown_order_returns_404_for_every_user(self):
+        for user in (self.business, self.customer):
+            authenticate(self.client, user)
+            url = reverse("order-detail", kwargs={"pk": 999})
+            response = self.client.patch(url, {"status": "completed"})
+            self.assertEqual(response.status_code, 404)
+
     def test_unknown_order_returns_404(self):
         authenticate(self.client, self.business)
         url = reverse("order-detail", kwargs={"pk": 999})
