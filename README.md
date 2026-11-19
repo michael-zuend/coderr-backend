@@ -102,6 +102,7 @@ The API runs at `http://127.0.0.1:8000/api/`, the admin panel at
 | `POSTGRES_USER` | PostgreSQL user (Docker) |
 | `POSTGRES_PASSWORD` | PostgreSQL password (Docker), use a strong password |
 | `CREATE_GUEST_USERS` | `True` creates the guest accounts on container start |
+| `LOGIN_THROTTLE_RATE`, `REGISTRATION_THROTTLE_RATE` | Override the throttling rates, for example `10/minute` |
 | `SECURE_SSL_REDIRECT` | Redirect HTTP to HTTPS when `DEBUG=False` (default `True`) |
 | `SECURE_HSTS_SECONDS` | HSTS duration when `DEBUG=False` (default one year) |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | SMTP settings, only used when `DEBUG=False` |
@@ -299,7 +300,10 @@ and cache files out of the image.
 - Secure defaults: `DEBUG` is off by default and the app refuses to start
   without a `SECRET_KEY`
 - Login and registration are limited to 5 requests per minute per client
-  to slow down brute-force attacks (HTTP 429 when exceeded)
+  to slow down brute-force attacks (HTTP 429 when exceeded). The limit is
+  active when `DEBUG=False`; in development it is off, so API test
+  collections can log in many times. `LOGIN_THROTTLE_RATE` and
+  `REGISTRATION_THROTTLE_RATE` override the rates, for example `10/minute`
 - HTTPS hardening when `DEBUG=False`: redirect to HTTPS, secure session and
   CSRF cookies, HSTS for one year and support for a TLS-terminating reverse
   proxy through the `X-Forwarded-Proto` header

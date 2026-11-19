@@ -1,4 +1,5 @@
 from io import StringIO
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -6,6 +7,7 @@ from django.core.management import call_command
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from rest_framework.throttling import ScopedRateThrottle
 
 from profile_app.tests.helpers import create_user
 
@@ -75,6 +77,9 @@ class LoginTests(APITestCase):
         response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    @mock.patch.object(
+        ScopedRateThrottle, "THROTTLE_RATES", {"login": "5/minute"}
+    )
     def test_too_many_login_attempts_are_throttled(self):
         payload = {"username": "loginuser", "password": "wrong"}
         for _ in range(5):

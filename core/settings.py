@@ -201,6 +201,10 @@ else:
         },
     }
 
+# Login and registration are throttled in production. In development the
+# limit is off by default, so API test collections can log in many times.
+THROTTLE_RATE = None if DEBUG else "5/minute"
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
@@ -210,9 +214,9 @@ REST_FRAMEWORK = {
     ],
     "COERCE_DECIMAL_TO_STRING": False,
     "DEFAULT_THROTTLE_RATES": {
-        "login": os.environ.get("LOGIN_THROTTLE_RATE", "5/minute"),
+        "login": os.environ.get("LOGIN_THROTTLE_RATE", THROTTLE_RATE),
         "registration": os.environ.get(
-            "REGISTRATION_THROTTLE_RATE", "5/minute"
+            "REGISTRATION_THROTTLE_RATE", THROTTLE_RATE
         ),
     },
 }
