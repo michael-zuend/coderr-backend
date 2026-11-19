@@ -10,9 +10,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN useradd --create-home appuser && chown -R appuser /app
+RUN useradd --create-home appuser \
+    && mkdir -p /app/media /app/staticfiles \
+    && chown -R appuser /app
 USER appuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate && python manage.py create_guest_users && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py create_guest_users && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --workers 3"]
